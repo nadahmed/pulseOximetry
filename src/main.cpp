@@ -3,23 +3,46 @@
 #include <SoftwareSerial.h>
 #include <Filters.h>
 
-#define MAX_MILLIS_TO_WAIT 1000 //or whatever
+#define MAX_MILLIS_TO_WAIT 300 //or whatever
+
+
+
+class Oxymetry{
+	public:
+		int pulseRate=0;
+		int Bargraph=0;
+		int SpO2 =0;
+};
 
 FilterOnePole lpf(LOWPASS, 0.05);
 
 SoftwareSerial swSer;
 
+Oxymetry oxymetry;
+
 void getBitsFromByte(byte b, int bit[8]);
+
 void package1(int bit[8]);
 void package2(int bit[8]);
 void package3(int bit[8]);
 void package4(int bit[8]);
 void package5(int bit[8]);
 
+typedef void (*PulseOxymetry)(int*);
+
+PulseOxymetry pulseOxymetry[] ={
+	package1,
+	package2,
+	package3,
+	package4,
+	package5
+};
+
+
 
 void setup()
 {
-	swSer.begin(19200, SWSERIAL_8O1, D5, D6);
+	swSer.begin(57600, SWSERIAL_8N1, D5, D6);
 	Serial.begin(115200);
 	Serial.flush();
 	Serial.print('\n');
@@ -65,10 +88,10 @@ void loop()
 	{
 		for (int i = 0; i < 5; i++)
 		{
-			Serial.print("Byte no. : ");
-			Serial.println(i);
+			// Serial.print("Byte no. : ");
+			// Serial.println(i);
 			// Serial.print(b[i], BIN);
-			Serial.print('\n');
+			// Serial.print('\n');
 			int bit[8];
 			getBitsFromByte(b[i], bit);
 			// for (int i = 7; i >= 0; i--)
@@ -77,33 +100,11 @@ void loop()
 			// }
 			// Serial.print('\n');
 
-			switch (i)
-			{
-			case 0:
-				package1(bit);
-				break;
-			
-			case 1:
-				package2(bit);
-				break;
-
-			case 2:
-				package3(bit);
-				break;
-
-			case 3:
-				package4(bit);
-				break;
-
-			case 4:
-				package5(bit);
-				break;
-			
-			default:
-				break;
-			}
+			pulseOxymetry[i](bit);
+			Serial.print('\t');
 
 		}
+		Serial.println();
 	}
 }
 
@@ -181,44 +182,45 @@ void getBitsFromByte(byte b, int bit[8])
 void package1(int bit[8])
 {
 	int signalStrength = map((bit[3]*8) + (bit[2]*4)  + (bit[1]*2) + bit[0],0,15, 0, 8);
-	Serial.print("Signal Strength: ");
-	Serial.println(signalStrength);
+	// Serial.print("Signal Strength: ");
+	// Serial.println(signalStrength);
 	
 	if(bit[4] != 0){
-		Serial.println("Signal: Not Found");
+		// Serial.println("Signal: Not Found");
 	}else{
-		Serial.println("Signal: OK");
+		// Serial.println("Signal: OK");
 	}
 
 	if(bit[5] != 0){
-		Serial.println("Probe: Unplugged");
+		// Serial.println("Probe: Unplugged");
 	}else{
-		Serial.println("Probe: OK");
+		// Serial.println("Probe: OK");
 	}
 
 	if(bit[6] == 1){
-		Serial.println("Pulse Beep");
+		// Serial.println("Pulse Beep");
 	}
 
 	if(bit[7] != 0){
-		Serial.println("In Sync");
+		// Serial.println("In Sync");
 	}else{
-		Serial.println("Not in sync");
+		// Serial.println("Not in sync");
 	}
-	Serial.print('\n');
+	// Serial.print('\n');
 }
 
 void package2(int bit[8]){
 	
 	int pleth = map((bit[6]*64) + (bit[5]*32)  + (bit[4]*16) + (bit[3]*8) + (bit[2]*4)  + (bit[1]*2) + bit[0], 0,127, 0, 100);
 	
-	Serial.print("Pleth: ");
-	Serial.println(pleth);
+	// Serial.print("Pleth: ");
+	// Serial.print(pleth);
+	
 	
 	if(bit[7] != 0){
-		Serial.println("Not in Sync");
+		// Serial.println("Not in Sync");
 	}else{
-		Serial.println("In sync");
+		// Serial.println("In sync");
 	}
 }
 
@@ -226,25 +228,26 @@ void package3(int bit[8]){
 	
 	int bargraph = (bit[3]*8) + (bit[2]*4)  + (bit[1]*2) + bit[0];
 	
-	Serial.print("Bargraph: ");
-	Serial.println(bargraph);
+	// Serial.print("Bargraph: ");
+	// Serial.print(bargraph);
 	
+
 	if(bit[4] != 0){
-		Serial.println("Finger: None");
+		// Serial.println("Finger: None");
 	}else{
-		Serial.println("Finger: OK");
+		// Serial.println("Finger: OK");
 	}
 
 	if(bit[5] != 0){
-		Serial.println("Pulse: Research ");
+		// Serial.println("Pulse: Research ");
 	}else{
-		Serial.println("Pulse: OK");
+		// Serial.println("Pulse: OK");
 	}
 
 	if(bit[7] != 0){
-		Serial.println("Not in Sync");
+		// Serial.println("Not in Sync");
 	}else{
-		Serial.println("In sync");
+		// Serial.println("In sync");
 	}
 
 
@@ -253,25 +256,26 @@ void package3(int bit[8]){
 void package4(int bit[8]){
 	int pulse = (bit[6]*64) + (bit[5]*32)  + (bit[4]*16) + (bit[3]*8) + (bit[2]*4)  + (bit[1]*2) + bit[0];
 	
-	Serial.print("Pulse Rate: ");
-	Serial.println(pulse);
+	// Serial.print("Pulse Rate: ");
+	Serial.print(pulse);
 	
 	if(bit[7] != 0){
-		Serial.println("Not in Sync");
+		// Serial.println("Not in Sync");
 	}else{
-		Serial.println("In sync");
+		// Serial.println("In sync");
 	}
 }
 
 void package5(int bit[8]){
 	int spo2 = (bit[6]*64) + (bit[5]*32)  + (bit[4]*16) + (bit[3]*8) + (bit[2]*4)  + (bit[1]*2) + bit[0];
 	
-	Serial.print("SpO2: ");
-	Serial.println(spo2);
+	// Serial.print("SpO2: ");
+	Serial.print(spo2);
+	
 	
 	if(bit[7] != 0){
-		Serial.println("Not in Sync");
+		// Serial.println("Not in Sync");
 	}else{
-		Serial.println("In sync");
+		// Serial.println("In sync");
 	}
 }
