@@ -16,7 +16,7 @@ class Oxymetry{
 
 FilterOnePole lpf(LOWPASS, 0.05);
 
-SoftwareSerial swSer;
+SoftwareSerial swSer(D5, D6, false);
 
 Oxymetry oxymetry;
 
@@ -42,7 +42,7 @@ PulseOxymetry pulseOxymetry[] ={
 
 void setup()
 {
-	swSer.begin(57600, SWSERIAL_8N1, D5, D6);
+	swSer.begin(57600, SWSERIAL_8N1);
 	Serial.begin(115200);
 	Serial.flush();
 	Serial.print('\n');
