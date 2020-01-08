@@ -13,35 +13,46 @@ void OxiParser::begin(int32_t BAUD_RATE){
 
 void OxiParser::begin(){
     
-    swSerial->begin(56700, SWSERIAL_8N1);
+    swSerial->begin(57600, SWSERIAL_8N1);
 }
 
-void OxiParser::read(){
-    
+void OxiParser:: readRaw( void (*callBackunction)(byte data)){
+	_callBackReadRaw = callBackunction;
+}
+void OxiParser::loop(){
+    // Serial.println("[OXIPARSER]: Read started!");
     static Search state = SEARCH;
-	static unsigned long starttime = millis();
+	static unsigned long starttime = 0;
 
     switch(state){
         case SEARCH:
             if (swSerial->available() < 5){
+				// Serial.println("[OXIPARSER]: Entered Serial Loop");
+				// Serial.println(starttime);
+				// Serial.println(swSerial->available());
+				
                 if ((millis() - starttime) > 300){  // Not data was available for a while
-                    state = NOT_FOUND;
+					
+					// Serial.println("[OXIPARSER]: Not Found");
+					state = NOT_FOUND;
                 }
             }else{
+				// Serial.println("[OXIPARSER]: Found");
                 state = FOUND;
             }
-        
+        break;
         case NOT_FOUND:
             clearBuffer();
             state = SEARCH;    //Search Again
             starttime = millis();   //Reset timer
-        
+        break;
         case FOUND:
             cleanRead();
             clearBuffer();
 
             state = SEARCH;
             starttime = millis();
+			break;
     }
 }
 
@@ -54,53 +65,62 @@ void OxiParser::clearBuffer(){
 
 void OxiParser::cleanRead(){
     uint8_t packet[5];
-    int dat;
+    byte dat;
     dat = swSerial->read();
+	_callBackReadRaw(dat);
     if((dat & 0x80) >0){
         packet[0]=dat;
         for (int i=1; i<5; i++){
             dat = swSerial->read();
+            _callBackReadRaw(dat);
             if((dat & 0x80) == 0){
                 packet[i]=dat;
             }
         }
     }
 
-    int _spo2 = packet[4];
-    int _pulseRate = packet[3] | ((packet[2] & 0x40) << 1);
-    int _signalStrength = packet[0] & 0x0f;
+    byte _spo2 = packet[4];
+    byte _pulseRate = packet[3] | ((packet[2] & 0x40) << 1);
+    byte _signalStrength = packet[0] & 0x0f;
     updatePleth(packet[1]);
-    if(_spo2 != spo2 || _pulseRate != pulseRate || _signalStrength != signalStrength)
-        {
-            update(_spo2,_pulseRate,_signalStrength);
-        }
+    if(_spo2 != spo2){
+        spo2 = _spo2;
+        _callBackSpo2(spo2);
+    } 
+    if(_pulseRate != pulseRate && _pulseRate != 128){
+        pulseRate = _pulseRate;
+        _callBackPulseRate(pulseRate);
+    } 
+    if(_signalStrength != signalStrength){
+        signalStrength = _signalStrength;
+        _callBackSignalStrength(signalStrength);
+    }
 
 }
 
-void OxiParser::update(int _spo2,int _pulseRate,int _signalStrength){
-    spo2 = _spo2;
-    pulseRate = _pulseRate;
-    signalStrength = _signalStrength;
+
+void OxiParser::updatePleth(byte _pleth){
+	// if(_pleth != 256 && _pleth != 18){
+    //     pleth = _pleth;
+        _callBackPleth(_pleth);
+    // }
+
 }
 
-void OxiParser::updatePleth(int _pleth){
-    pleth=_pleth;
+void OxiParser::readPulseRate(void (*callBackFunction)(byte data)){
+    _callBackPulseRate = callBackFunction;
 }
 
-int OxiParser::getPulseRate(){
-    return pulseRate;
+void OxiParser::readSpo2(void (*callBackFunction)(byte data)){
+    _callBackSpo2 = callBackFunction;
 }
 
-int OxiParser::getSpo2(){
-    return spo2;
+void OxiParser::readSignalStrength(void (*callBackFunction)(byte data)){
+    _callBackSignalStrength = callBackFunction;
 }
 
-int OxiParser::getSignalStrength(){
-    return signalStrength;
-}
-
-int OxiParser::getPleth(){
-    return pleth;
+void OxiParser::readPleth(void (*callBackFunction)(byte data)){
+    _callBackPleth = callBackFunction;
 }
 
 void OxiParser::getBitsFromByte(uint8_t _byte, int bit[8])
@@ -114,108 +134,6 @@ void OxiParser::getBitsFromByte(uint8_t _byte, int bit[8])
 	bit[2] = (_byte & 4) >> 2;
 	bit[1] = (_byte & 2) >> 1;
 	bit[0] = (_byte & 1) >> 0;
-}
-
-
-void OxiParser::packet1(int bit[8])
-{
-	int signalStrength = map((bit[3]*8) + (bit[2]*4)  + (bit[1]*2) + bit[0],0,15, 0, 8);
-	// Serial.print("Signal Strength: ");
-	// Serial.println(signalStrength);
-	
-	if(bit[4] != 0){
-		// Serial.println("Signal: Not Found");
-	}else{
-		// Serial.println("Signal: OK");
-	}
-
-	if(bit[5] != 0){
-		// Serial.println("Probe: Unplugged");
-	}else{
-		// Serial.println("Probe: OK");
-	}
-
-	if(bit[6] == 1){
-		// Serial.println("Pulse Beep");
-	}
-
-	if(bit[7] != 0){
-		// Serial.println("In Sync");
-	}else{
-		// Serial.println("Not in sync");
-	}
-	// Serial.print('\n');
-}
-
-void OxiParser::packet2(int bit[8]){
-	
-	int pleth = map((bit[6]*64) + (bit[5]*32)  + (bit[4]*16) + (bit[3]*8) + (bit[2]*4)  + (bit[1]*2) + bit[0], 0,127, 0, 100);
-	
-	// Serial.print("Pleth: ");
-	// Serial.print(pleth);
-	
-	
-	if(bit[7] != 0){
-		// Serial.println("Not in Sync");
-	}else{
-		// Serial.println("In sync");
-	}
-}
-
-void OxiParser::packet3(int bit[8]){
-	
-	int bargraph = (bit[3]*8) + (bit[2]*4)  + (bit[1]*2) + bit[0];
-	
-	// Serial.print("Bargraph: ");
-	// Serial.print(bargraph);
-	
-
-	if(bit[4] != 0){
-		// Serial.println("Finger: None");
-	}else{
-		// Serial.println("Finger: OK");
-	}
-
-	if(bit[5] != 0){
-		// Serial.println("Pulse: Research ");
-	}else{
-		// Serial.println("Pulse: OK");
-	}
-
-	if(bit[7] != 0){
-		// Serial.println("Not in Sync");
-	}else{
-		// Serial.println("In sync");
-	}
-
-
-}
-
-void OxiParser::packet4(int bit[8]){
-	int pulse = (bit[6]*64) + (bit[5]*32)  + (bit[4]*16) + (bit[3]*8) + (bit[2]*4)  + (bit[1]*2) + bit[0];
-	
-	// Serial.print("Pulse Rate: ");
-	Serial.print(pulse);
-	
-	if(bit[7] != 0){
-		// Serial.println("Not in Sync");
-	}else{
-		// Serial.println("In sync");
-	}
-}
-
-void OxiParser::packet5(int bit[8]){
-	int spo2 = (bit[6]*64) + (bit[5]*32)  + (bit[4]*16) + (bit[3]*8) + (bit[2]*4)  + (bit[1]*2) + bit[0];
-	
-	// Serial.print("SpO2: ");
-	Serial.print(spo2);
-	
-	
-	if(bit[7] != 0){
-		// Serial.println("Not in Sync");
-	}else{
-		// Serial.println("In sync");
-	}
 }
 
 

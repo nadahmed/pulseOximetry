@@ -17,33 +17,41 @@ enum Search {
 class OxiParser
 {
 private:
+      
     
-    int spo2;
-    int signalStrength;
-    int pulseRate;
-    int pleth;
+    byte spo2;
+    byte signalStrength;
+    byte pulseRate;
+    byte pleth;
+    void (*_callBackReadRaw)(byte);
+    
+    void (*_callBackSpo2)(byte);
+    void (*_callBackSignalStrength)(byte);
+    void (*_callBackPulseRate)(byte);
+    void (*_callBackPleth)(byte);
+   
+    
 
     SoftwareSerial* swSerial;
     void clearBuffer();
-    void getBitsFromByte(byte, int*);
-    void packet1(int bit[8]);
-    void packet2(int bit[8]);
-    void packet3(int bit[8]);
-    void packet4(int bit[8]);
-    void packet5(int bit[8]);
-    void update(int,int,int);
-    void updatePleth(int);
-    void cleanRead();
     
+    void update(byte,byte,byte);
+    void updatePleth(byte);
+    void cleanRead();
+
 public:
+
     OxiParser(SoftwareSerial* swSer);
+
     void begin(int32_t);
     void begin();
-    void read();
-    int getSpo2();
-    int getSignalStrength();
-    int getPulseRate();
-    int getPleth();
+    void loop();
+    void readRaw( void (*)(byte));
+    void readSignalStrength( void(*)(byte));
+    void readPulseRate( void(*)(byte));
+    void readPleth( void(*)(byte));
+    void readSpo2( void(*)(byte));
+    void getBitsFromByte(byte, int*);
 
     ~OxiParser();
 };
