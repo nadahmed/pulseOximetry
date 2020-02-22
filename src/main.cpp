@@ -25,10 +25,10 @@ void readraw(byte data){
 
     }
 void readspo2(byte data){
-    float temp = data;
+    // float temp = data;
     // Serial.print(data);
     // Serial.print('\t');
-    Serial.println(temp);
+    // Serial.println(temp);
 
     // Serial.println((temp/126.0f)*100);
 }

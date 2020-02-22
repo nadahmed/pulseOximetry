@@ -18,7 +18,7 @@ class OxiParser
 {
 private:
       
-    
+    const uint8_t packet_Size= 11;
     byte spo2;
     byte signalStrength;
     byte pulseRate;
@@ -55,6 +55,7 @@ public:
     void readSpo2( void(*)(byte));
     void readBeep( void(*)(byte));
     void getBitsFromByte(byte, int*);
+    void printBits(int*);
 
     ~OxiParser();
 };
