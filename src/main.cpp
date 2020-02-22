@@ -18,14 +18,19 @@ OxiParser oxiParser(&swSer);
 void readraw(byte data){
         // int buff[8];
         // oxiParser.getBitsFromByte(data, buff);
-        // for (int i=7; i>=0; i--){
+        // for (int i=0; i<8; i++){
         // Serial.print(buff[i]);
         // }
         // Serial.print('\n');
 
     }
 void readspo2(byte data){
-    // Serial.println(data);
+    float temp = data;
+    // Serial.print(data);
+    // Serial.print('\t');
+    Serial.println(temp);
+
+    // Serial.println((temp/126.0f)*100);
 }
 
 void readsig(byte data){
@@ -34,8 +39,19 @@ void readsig(byte data){
 void readpulse(byte data){
     // Serial.println(data);
 }
+
+void readBeep(byte data){
+    // int buff[8];
+    // oxiParser.getBitsFromByte(data, buff);
+    // for (int i=7; i>=0; i--){
+    // Serial.print(buff[i]);
+    // }
+    // Serial.print('\n');
+}
+
 void readpleth(byte data){
-    Serial.println(data);
+    // if(data != 0)
+    // Serial.println(data);
 }
 
 void setup()
@@ -46,18 +62,18 @@ void setup()
 	//Serial.setDebugOutput(true);
 	USE_SERIAL.setDebugOutput(true);
 
-	USE_SERIAL.println();
-	USE_SERIAL.println();
-	USE_SERIAL.println();
+	// USE_SERIAL.println();
+	// USE_SERIAL.println();
+	// USE_SERIAL.println();
 
     for(uint8_t t = 4; t > 0; t--) {
-		USE_SERIAL.printf("[SETUP] BOOT WAIT %d...\n", t);
+		// USE_SERIAL.printf("[SETUP] BOOT WAIT %d...\n", t);
 		USE_SERIAL.flush();
-		delay(1000);
+		delay(500);
 	}
 
     oxiParser.readRaw(readraw);
-    
+    oxiParser.readBeep(readBeep);
     oxiParser.readPleth(readpleth);
     oxiParser.readSignalStrength(readsig);
     oxiParser.readSpo2(readspo2);

@@ -23,12 +23,14 @@ private:
     byte signalStrength;
     byte pulseRate;
     byte pleth;
+    byte beep;
     void (*_callBackReadRaw)(byte);
     
     void (*_callBackSpo2)(byte);
     void (*_callBackSignalStrength)(byte);
     void (*_callBackPulseRate)(byte);
     void (*_callBackPleth)(byte);
+    void (*_callBackBeep)(byte);
    
     
 
@@ -51,6 +53,7 @@ public:
     void readPulseRate( void(*)(byte));
     void readPleth( void(*)(byte));
     void readSpo2( void(*)(byte));
+    void readBeep( void(*)(byte));
     void getBitsFromByte(byte, int*);
 
     ~OxiParser();

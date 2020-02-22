@@ -26,12 +26,12 @@ void OxiParser::loop(){
 
     switch(state){
         case SEARCH:
-            if (swSerial->available() < 5){
+            if (swSerial->available() < 9){
 				// Serial.println("[OXIPARSER]: Entered Serial Loop");
 				// Serial.println(starttime);
 				// Serial.println(swSerial->available());
 				
-                if ((millis() - starttime) > 300){  // Not data was available for a while
+                if ((millis() - starttime) > 2000){  // No data was available for a while
 					
 					// Serial.println("[OXIPARSER]: Not Found");
 					state = NOT_FOUND;
@@ -48,7 +48,7 @@ void OxiParser::loop(){
         break;
         case FOUND:
             cleanRead();
-            clearBuffer();
+            // clearBuffer();
 
             state = SEARCH;
             starttime = millis();
@@ -64,37 +64,55 @@ void OxiParser::clearBuffer(){
 }
 
 void OxiParser::cleanRead(){
-    uint8_t packet[5];
-    byte dat;
-    dat = swSerial->read();
+    byte packet[9];
+    byte dat = swSerial->read();
 	_callBackReadRaw(dat);
-    if((dat & 0x80) >0){
+    // if((dat & 0x01) == 0x01){
         packet[0]=dat;
-        for (int i=1; i<5; i++){
-            dat = swSerial->read();
-            _callBackReadRaw(dat);
-            if((dat & 0x80) == 0){
-                packet[i]=dat;
+        dat = swSerial->read();
+        if(dat == 0x01){
+            packet[1] = dat;
+            
+            for (int i=2; i<9; i++){
+                dat = swSerial->read();
+                _callBackReadRaw(dat);
+                // if((dat & 0x80) == 0){
+                    packet[i]=dat;
+                // }
             }
-        }
-    }
 
-    byte _spo2 = packet[4];
-    byte _pulseRate = packet[3] | ((packet[2] & 0x40) << 1);
-    byte _signalStrength = packet[0] & 0x0f;
-    updatePleth(packet[1]);
-    if(_spo2 != spo2){
-        spo2 = _spo2;
-        _callBackSpo2(spo2);
-    } 
-    if(_pulseRate != pulseRate && _pulseRate != 128){
-        pulseRate = _pulseRate;
-        _callBackPulseRate(pulseRate);
-    } 
-    if(_signalStrength != signalStrength){
-        signalStrength = _signalStrength;
-        _callBackSignalStrength(signalStrength);
-    }
+
+            
+
+
+
+        }
+
+    // }
+byte _spo2 = packet[6];
+            byte _pulseRate = packet[5]; // | ((packet[2] & 0x40) << 1);
+            byte _signalStrength = packet[2] & 0x07;
+            
+            byte _beep = packet[2] & 0x40;
+
+            updatePleth(packet[3]);
+            
+                // Serial.println(beep);
+            _callBackBeep(_beep);
+            
+            // if(spo2 != 0x7F){
+                spo2 = _spo2;
+                _callBackSpo2(spo2);
+            // } 
+            if(_pulseRate != pulseRate && _pulseRate != 128){
+                pulseRate = _pulseRate;
+                _callBackPulseRate(pulseRate);
+            } 
+            if(_signalStrength != signalStrength){
+                signalStrength = _signalStrength;
+                _callBackSignalStrength(signalStrength);
+            }
+    
 
 }
 
@@ -105,6 +123,10 @@ void OxiParser::updatePleth(byte _pleth){
         _callBackPleth(_pleth);
     // }
 
+}
+
+void OxiParser::readBeep(void (*callBackFunction)(byte data)){
+    _callBackBeep = callBackFunction;
 }
 
 void OxiParser::readPulseRate(void (*callBackFunction)(byte data)){
@@ -122,6 +144,8 @@ void OxiParser::readSignalStrength(void (*callBackFunction)(byte data)){
 void OxiParser::readPleth(void (*callBackFunction)(byte data)){
     _callBackPleth = callBackFunction;
 }
+
+
 
 void OxiParser::getBitsFromByte(uint8_t _byte, int bit[8])
 {
